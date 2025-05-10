@@ -1,0 +1,9 @@
+/home/riccardo/Compilatori/studio/Assignement_3/build/CMakeFiles/intrinsics_gen.dir
+/home/riccardo/Compilatori/studio/Assignement_3/build/CMakeFiles/omp_gen.dir
+/home/riccardo/Compilatori/studio/Assignement_3/build/CMakeFiles/acc_gen.dir
+/home/riccardo/Compilatori/studio/Assignement_3/build/CMakeFiles/ARMTargetParserTableGen.dir
+/home/riccardo/Compilatori/studio/Assignement_3/build/CMakeFiles/AArch64TargetParserTableGen.dir
+/home/riccardo/Compilatori/studio/Assignement_3/build/CMakeFiles/RISCVTargetParserTableGen.dir
+/home/riccardo/Compilatori/studio/Assignement_3/build/CMakeFiles/LoopInvariantPass.dir
+/home/riccardo/Compilatori/studio/Assignement_3/build/CMakeFiles/edit_cache.dir
+/home/riccardo/Compilatori/studio/Assignement_3/build/CMakeFiles/rebuild_cache.dir
