@@ -3,8 +3,7 @@
 //    LoopInvariantPass.cpp
 //
 // DESCRIPTION:
-//    Identifica le istruzioni loop invariant in un ciclo. Non implementa la
-//    code motion, ma stampa le istruzioni loop invariant rilevate.
+//    Identifica le istruzioni loop invariant in un ciclo. 
 //
 // USAGE:
 //    New PM

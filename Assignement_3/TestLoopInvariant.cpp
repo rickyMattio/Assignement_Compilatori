@@ -1,31 +1,25 @@
-#include <iostream>
+int testFunction(int x, int y) {
+    int c1 = 10;              // costante loop-invariant
+    int c2 = 5 + 3;           // espressione costante loop-invariant
+    int a = x + y;            // loop-invariant (x, y invarianti)
+    int b = a * c1;           // dipende da loop-invariant -> anche lui
+    int result = 0;
 
-void test_loop_1(int *A, int N) {
-    int c = 5;           // costante loop-invariant
-    int d = c + 3;       // anche questa lo è
-    int e = d * 2;       // dipende da due loop-invariant
+    for (int i = 0; i < 20; ++i) {
+        int d = c2 + b;       // loop-invariant (composta)
+        int tmp = d * i;      // dipende da i -> non spostabile
 
-    for (int i = 0; i < N; ++i) {
-        A[i] = A[i] + e; // e è loop-invariant → può essere spostata
+        if (i % 2 == 0) {
+            int e = x + y;    // loop-invariant ma ricalcolato → test duplicati
+            result += tmp + e;
+        } else {
+            result += tmp;
+        }
     }
-}
 
-void test_loop_2(int *B, int N, int x) {
-    int fixed = x + 10;  // x viene da fuori, quindi anche fixed è loop-invariant
-
-    for (int i = 0; i < N; ++i) {
-        int temp = B[i] * 2;       // dipende da loop → non spostabile
-        B[i] = temp + fixed;       // uso misto: fixed sì, temp no
-    }
+    return result;
 }
 
 int main() {
-    int A[10] = {0};
-    int B[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-
-    test_loop_1(A, 10);
-    test_loop_2(B, 10, 2);
-
-    std::cout << "Test conclusi\n";
-    return 0;
+    return testFunction(2, 3);
 }
