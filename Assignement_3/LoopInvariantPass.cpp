@@ -6,9 +6,13 @@
 //    Identifica le istruzioni loop invariant in un ciclo. 
 //
 // USAGE:
-//    New PM
-//      opt -load-pass-plugin=<path-to>/libLoopInvariantPass.so -passes="loop-invariant-pass" \
-//          -disable-output <input-llvm-file>
+//       cd build
+//       cmake ..
+//       make
+//       cd ..
+//       clang -O0 -emit-llvm -Xclang -disable-O0-optnone -S TestLoopInvariant.cpp -o test/TestLoopInvariant1.bc
+//       opt -passes="mem2reg" test/TestLoopInvariant1.bc -o test/TestLoopInvariant2.bc
+//       llvm-dis test/TestLoopInvariant2.bc -o test/TestLoopInvariantOptimized.ll
 //
 // License: MIT
 //=============================================================================
