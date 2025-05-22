@@ -1,9 +1,0 @@
-/home/riccardo/Laboratori_compilatori/Assignement1/build/CMakeFiles/intrinsics_gen.dir
-/home/riccardo/Laboratori_compilatori/Assignement1/build/CMakeFiles/omp_gen.dir
-/home/riccardo/Laboratori_compilatori/Assignement1/build/CMakeFiles/acc_gen.dir
-/home/riccardo/Laboratori_compilatori/Assignement1/build/CMakeFiles/ARMTargetParserTableGen.dir
-/home/riccardo/Laboratori_compilatori/Assignement1/build/CMakeFiles/AArch64TargetParserTableGen.dir
-/home/riccardo/Laboratori_compilatori/Assignement1/build/CMakeFiles/RISCVTargetParserTableGen.dir
-/home/riccardo/Laboratori_compilatori/Assignement1/build/CMakeFiles/CombinedOpts.dir
-/home/riccardo/Laboratori_compilatori/Assignement1/build/CMakeFiles/edit_cache.dir
-/home/riccardo/Laboratori_compilatori/Assignement1/build/CMakeFiles/rebuild_cache.dir
