@@ -24,7 +24,6 @@ include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
 #===============================================================================
 # Use the same C++ standard as LLVM does
 set(CMAKE_CXX_STANDARD 17 CACHE STRING "")
-set(LT_LLVM_INSTALL_DIR "/usr/lib/llvm-19" CACHE PATH "LLVM installation directory")
 
 # LLVM is normally built without RTTI. Be consistent with that.
 if(NOT LLVM_ENABLE_RTTI)
