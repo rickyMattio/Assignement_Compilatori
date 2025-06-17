@@ -1,0 +1,93 @@
+Assignement 1
+COMANDI COMUNI:
+
+rm -rf build/*
+cd build
+cmake ..
+make
+cd ..
+
+
+  COMANDI ALGEBRAIC IDENTITY:
+clang++ -S -emit-llvm -O0 \
+  -Xclang -disable-O0-optnone \
+  -o test/testAlgebraicIdentity.ll \
+  test/testAlgebraicIdentity.cpp
+
+
+opt -load-pass-plugin ./build/libCombinedOpts.so \
+ -passes="algebraic-identity" \
+ -S -o test/testAlgebraicIdentity_opt.ll \
+ test/testAlgebraicIdentity.ll
+
+
+
+
+  COMANDI STRENGHT REDUCTION:
+
+clang++ -S -emit-llvm -O0 \
+  -Xclang -disable-O0-optnone \
+  -o test/testStrenghtReduction.ll \
+  test/testStrenghtReduction.cpp
+
+
+opt -load-pass-plugin ./build/libCombinedOpts.so  \
+ -passes="strength-reduction"    \
+ -S -o test/testStrenghtReduction_opt.ll   \
+ test/testStrenghtReduction.ll
+
+
+
+
+
+  COMANDI MULTI-ISTRUCTION:
+clang++ -S -emit-llvm -O0 \
+  -Xclang -disable-O0-optnone \
+  -o test/testMultiInstruction.ll \
+  test/testMultiInstruction.cpp
+
+opt -load-pass-plugin ./build/libCombinedOpts.so  \
+ -passes="mem2reg,multi-instruction-opt"    \
+ -S -o test/testMultiInstruction_opt.ll   \
+ test/testMultiInstruction.ll
+
+
+
+Assigement 3
+
+rm -rf build/*
+rm -rf test/*
+export PATH=/usr/lib/llvm-19/bin:$PATH
+cd build
+cmake ..
+make
+cd ..
+
+clang++ -S -emit-llvm -O0 \
+  -Xclang -disable-O0-optnone \
+  -o test/Test.ll \
+  test/Test_1.cpp
+
+opt -load-pass-plugin ./build/libLoopInvariantPass.so  \
+ -passes="mem2reg,loop-invariant-pass"    \
+ -S -o test/Test_opt.ll   \
+ test/Test.ll
+
+
+Assignement 4
+
+rm -rf build/*
+cd build/
+cmake ..
+make
+cd ..
+
+
+clang -O0 -emit-llvm -Xclang -disable-O0-optnone -S test/TestLoop5.cpp -o test/test_bytecode.bc
+
+
+opt -load-pass-plugin build/libLoopFusionPass.so -passes="mem2reg,loop-simplify,loop-rotate,loop-fusion-pass" test/test_bytecode.bc -o test/test_opt.bc
+
+
+llvm-dis test/test_opt.bc -o test/test_opt.ll
+
