@@ -77,7 +77,7 @@ struct AlgebraicIdentity : PassInfoMixin<AlgebraicIdentity> {
 
                 // Se abbiamo trovato un caso semplificabile, sostituiamo l'istruzione
                 if (OtherOperand) {
-                    // Stampiamo l'ottimizzazione rilevata su stderr (solo per debug)
+                    // Stampiamo l'ottimizzazione rilevata su err
                     errs() << "Semplifico: " << *dyn_cast<BinaryOperator>(I) << " -> uso " << *OtherOperand << "\n";
                     // Rimpiazziamo tutte le occorrenze dell'istruzione con il valore semplificato
                     I->replaceAllUsesWith(OtherOperand);
@@ -101,20 +101,19 @@ struct AlgebraicIdentity : PassInfoMixin<AlgebraicIdentity> {
     // Applichiamo il pass su ogni BasicBlock della funzione
     bool runOnFunction(Function &F) {
         bool Transformed = false; // Indica se almeno un blocco è stato modificato
-        errs() << "Algebraic Identity:\n"; // Messaggio di debug che segnala l’inizio dell’analisi
+        errs() << "Algebraic Identity:\n"; // Messaggio d'inizio dell’analisi
 
         // Itera su tutti i BasicBlock della funzione, se almeno un blocco è stato trasformato, segnalo
         for (auto &BB : F) { if (runOnBasicBlock(BB)) { Transformed = true; } }
         return Transformed; // Ritorna true se è stata fatta almeno una modifica
     }
 
-    // Entry point ufficiale del nuovo pass (secondo il PassManager moderno)
     PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
          // Se la funzione è stata modificata, dichiara che nessuna analisi è stata preservata
         if (runOnFunction(F)) { return PreservedAnalyses::none(); }
         return PreservedAnalyses::all(); // Altrimenti, segnala che tutte le analisi sono ancora valide
     }
-    // Indica che questo pass è sempre richiesto (anche in presenza di -O0)
+
     static bool isRequired() { return true; }
 };
 
@@ -164,7 +163,8 @@ struct StrengthReduction : PassInfoMixin<StrengthReduction> {
             return Shift;
         }
     }
-    // Applichiamo la strength reduction a un BasicBlock
+
+    
     bool runOnBasicBlock(BasicBlock &B) {
         bool Changed = false;
 
@@ -262,12 +262,12 @@ struct StrengthReduction : PassInfoMixin<StrengthReduction> {
         for (auto &BB : F) { if (runOnBasicBlock(BB)) { Transformed = true; } }
         return Transformed;
     }
-    // Metodo richiesto dal PassManager: indica se l'analisi è ancora valida dopo questo pass
+
     PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
          if (runOnFunction(F)) { return PreservedAnalyses::none(); } // Le analisi non sono più valide
         return PreservedAnalyses::all(); // Nessuna modifica, analisi ancora valide
     }
-    // Obbliga l'esecuzione del pass (anche in -O0)
+    // Obbliga l'esecuzione del pass 
     static bool isRequired() { return true; }
 };
 
@@ -301,7 +301,6 @@ struct MultiInstructionOpt : PassInfoMixin<MultiInstructionOpt> {
                 unsigned int Operator = BinOp ->getOpcode();
                 if (Operator == Instruction::Add || Operator == Instruction::Sub) {
 
-                    //errs()<< "Prima istruzione: " << *dyn_cast<BinaryOperator>(I)<<"\n";
 
                     // Prendiamo e Castiamo i 2 operandi in ConstantInt (Prova a convertire i due operandi a costanti)
                     ConstantInt *COp0 = dyn_cast<ConstantInt>(BinOp->getOperand(0));
@@ -329,7 +328,6 @@ struct MultiInstructionOpt : PassInfoMixin<MultiInstructionOpt> {
                     for (auto SecondInst = I->user_begin(); SecondInst != I->user_end(); SecondInst++){
                         // Controlliamo che l'isruzione utente sia un operazione binaria
                         
-                        //errs()<< "Seconda istruzione: " << *dyn_cast<BinaryOperator>(SecondInst)<<"\n";
                         if (BinaryOperator *SecondBinOp = dyn_cast<BinaryOperator>(*SecondInst)){
                             // Prendiamo e Castiamo a costanti per i controlli, estrae gli operandi della seconda istruzione (che usa la prima)
                             ConstantInt *SecondCOp0 = dyn_cast<ConstantInt>(SecondBinOp->getOperand(0));
@@ -395,27 +393,19 @@ struct MultiInstructionOpt : PassInfoMixin<MultiInstructionOpt> {
         return Transformed;
     }
 
-    // Metodo compatibile con il nuovo PassManager: segnala se il pass modifica qualcosa
     PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
         if (runOnFunction(F)) { return PreservedAnalyses::none(); } //Se ha fatto modifiche, invalidiamo le analisi -> none
         return PreservedAnalyses::all(); // Altrimenti, tutto è rimasto invariato -> all 
     }
-    // Obbliga l'esecuzione del pass anche senza ottimizzazioni (-O0)
+
     static bool isRequired() { return true; }
 };
 
 }
 
-// sono al telefono 
-// Entry point richiesto da LLVM per i plugin caricabili dinamicamente
-// Viene chiamato da `opt` per ottenere le informazioni del pass
 extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
 llvmGetPassPluginInfo() {
-    // Restituisce una struct PassPluginLibraryInfo contenente:
-    // - La versione API del plugin
-    // - Il nome del plugin ("CombinedOpts")
-    // - La versione di LLVM in uso
-    // - Una lambda di registrazione per i pass definiti
+
 
     return {LLVM_PLUGIN_API_VERSION, "CombinedOpts", LLVM_VERSION_STRING,
             // Funzione di registrazione dei pass al PassBuilder
