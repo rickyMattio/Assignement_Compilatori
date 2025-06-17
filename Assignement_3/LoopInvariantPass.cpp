@@ -10,9 +10,15 @@
 //       cmake ..
 //       make
 //       cd ..
-//       clang -O0 -emit-llvm -Xclang -disable-O0-optnone -S TestLoopInvariant.cpp -o test/TestLoopInvariant1.bc
-//       opt -passes="mem2reg" test/TestLoopInvariant1.bc -o test/TestLoopInvariant2.bc
-//       llvm-dis test/TestLoopInvariant2.bc -o test/TestLoopInvariantOptimized.ll
+//       clang++ -S -emit-llvm -O0 \
+//       -Xclang -disable-O0-optnone \
+//       -o test/Test.ll \
+//       test/Test_1.cpp
+//
+//       opt -load-pass-plugin ./build/libLoopInvariantPass.so  \
+//       -passes="mem2reg,loop-invariant-pass"    \
+//       -S -o test/Test_opt.ll   \
+//       test/Test.ll
 //
 // License: MIT
 //=============================================================================
@@ -51,8 +57,8 @@ void collectAllLoopsInRPO(Loop *L, SmallVectorImpl<Loop*> &AllLoops) {
     AllLoops.push_back(L);
 }
 
-// NUOVA FUNZIONE: Controlla se una variabile è "morta" (non usata) fuori dal loop.
-// VERSIONE SEMPLIFICATA: Controlla se tutti gli usi sono interni al loop
+// Controlla se una variabile è "morta" (non usata) fuori dal loop.
+// Controlla se tutti gli usi sono interni al loop
 
 bool isDead(Instruction *I, Loop *L) { 
     // Se non è usata, è morta
@@ -142,7 +148,7 @@ bool isOperandLoopInvariant(Value *Op, Loop *L, SmallVectorImpl<Value *> &Checke
 }
 
 
-// MODIFICATA: Funzione per verificare se un blocco domina tutte le uscite del loop.
+// Funzione per verificare se un blocco domina tutte le uscite del loop.
 // Non modifica CheckedOperands direttamente.
 // Utile per capire se si può spostare un'istruzione fuori dal loop senza modificarne il comportamento.
 
@@ -171,7 +177,6 @@ bool dominatesAllLoopExits(Instruction &I, Loop *L, DominatorTree &DT) {
     return true; // Domina tutti i blocchi di uscita
 }
 
-// MODIFICATA: Rimossa la dipendenza da InvariantSet per il controllo degli usi.
 // Funzione che verifica se l'istruzione `I` domina tutti i suoi usi interni al loop `L`.
 // Utile nella Loop-Invariant Code Motion (LICM) per sapere se è sicuro spostare `I` fuori dal loop.
 // La funzione NON richiede più che gli usi siano in un insieme di istruzioni invarianti.
@@ -190,12 +195,6 @@ bool dominatesAllUsesInLoop(Instruction &I, Loop *L, DominatorTree &DT) {
                     // Se anche un solo uso nel loop NON è dominato, `I` non può essere spostata
                     return false;
                 }
-                // RIMOZIONE: La riga seguente è stata rimossa per allentare la restrizione
-                //             che gli usi debbano essere anch'essi in InvariantSet.
-
-                // if (!InvariantSet.contains(UserInst)) {
-                //     return false;
-                // }
             }
         }
     }
@@ -226,7 +225,6 @@ void dfsCodeMotion(Instruction *I,
     }
 
     // Dopo aver visitato le dipendenze, sposta se le condizioni sono rispettate
-    // MODIFICATA: La chiamata a dominatesAllUsesInLoop è stata aggiornata per la nuova firma.
     if (dominatesAllUsesInLoop(*I, L, DT)) {
         // Non si può spostare un'istruzione terminator (es. br, ret)
         if (I->isTerminator()) {
@@ -244,7 +242,7 @@ void dfsCodeMotion(Instruction *I,
 
 
 
-// Soluzione più conservativa: controlla se l'istruzione appare multiple volte nel loop `L`.
+// Controlla se l'istruzione appare multiple volte nel loop `L`.
 // Se sì, non è sicuro spostarla fuori: potrebbe essere ridefinita o interferire.
 bool appearsMultipleTimesInLoop(Instruction *I, Loop *L) {
     int count = 0;
@@ -276,38 +274,10 @@ bool appearsMultipleTimesInLoop(Instruction *I, Loop *L) {
     return count > 1;
 }
 
-// Questa funzione controlla se un'istruzione viene sempre eseguita quando il loop gira.
-// È utile per sapere se possiamo spostarla fuori dal ciclo senza rischi.
-
-bool isAlwaysExecuted(Instruction *I, Loop *L, DominatorTree &DT) {
-    // Prendiamo il blocco in cui si trova l'istruzione
-    BasicBlock *BB = I->getParent();
-    // E il blocco di inizio del loop
-    BasicBlock *Header = L->getHeader();
-    
-    // Un'istruzione è sempre eseguita se il suo blocco è dominato dall'header
-    // e domina tutte le uscite del loop
-    if (!DT.dominates(Header, BB)) {
-        return false; // Se non succede, l’istruzione potrebbe non essere eseguita in alcune iterazioni
-    }
-    
-    // Verifica che il blocco domini tutte le uscite del loop
-    SmallVector<BasicBlock *, 8> ExitBlocks;
-    L->getExitBlocks(ExitBlocks);
-    
-    // Per ognuna di queste uscite, controlliamo che il blocco della nostra istruzione venga eseguito prima
-    for (BasicBlock *Exit : ExitBlocks) {
-        if (!DT.dominates(BB, Exit)) {
-            return false; // Se anche una sola uscita NON è dominata dal blocco, allora l’istruzione potrebbe essere saltata
-        }
-    }
-    
-    return true;
-}
 
 
 
-// OPPURE soluzione ancora più semplice:
+
 // Non spostare MAI istruzioni aritmetiche/logiche se ce ne sono multiple nel loop
 // Questa funzione decide se è sicuro spostare un’istruzione fuori dal loop.
 // Serve per evitare di fare danni con la LICM spostando cose che potrebbero creare problemi.
@@ -321,8 +291,7 @@ bool isSafeToMove(Instruction *I, Loop *L) {
         case Instruction::FCmp:      // Confronti floating point/double 
             return true;             // Generalmente sicuri
         
-        //Operazioni aritmetiche: possono sembrare innocue, ma se ne troviamo 
-        // più di una identica dentro al ciclo, meglio non spostarle (troppo rischioso)
+        //Operazioni aritmetiche: possono sembrare innocue, ma se ne troviamo più di una identica dentro al ciclo, meglio non spostarle (troppo rischioso)
         case Instruction::Add:       // Addizioni
         case Instruction::Sub:       // Sottrazioni  
         case Instruction::Mul:       // Moltiplicazioni
@@ -332,7 +301,7 @@ bool isSafeToMove(Instruction *I, Loop *L) {
             return !appearsMultipleTimesInLoop(I, L);
             
         default:
-            return false;            // Conservativo: non spostare altre operazioni
+            return false;            
     }
 }
 
@@ -345,7 +314,7 @@ struct LoopInvariantPass : PassInfoMixin<LoopInvariantPass> {
         LoopInfo &LI = FAM.getResult<LoopAnalysis>(F);
         DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
 
-        // NUOVO: Raccogliamo tutti i loop presenti nella funzione (top-level e nidificati) in ordine "inside-out"
+        // Raccogliamo tutti i loop presenti nella funzione (top-level e nidificati) in ordine "inside-out"
         // per permettere agli spostamenti dei loop interni di beneficiare quelli esterni.
         SmallVector<Loop*> AllLoopsInOrder;
         for (Loop *TopLevelL : LI) {
@@ -361,7 +330,7 @@ struct LoopInvariantPass : PassInfoMixin<LoopInvariantPass> {
           });
 
 
-        // MODIFICATA: Ora itera su tutti i loop nell'ordine desiderato (gestione loop nidificati).
+        // itera su tutti i loop nell'ordine desiderato (gestione loop nidificati).
         for (Loop *L : AllLoopsInOrder) {
             // Stampiamo il nome del blocco di header (giusto per debug e chiarezza)
             if (BasicBlock *Header = L->getHeader()) {
@@ -379,7 +348,7 @@ struct LoopInvariantPass : PassInfoMixin<LoopInvariantPass> {
                 continue;
             }
 
-            // --- Fase 1: Identificazione delle istruzioni Loop-Invariant ---
+            //  Identificazione delle istruzioni Loop-Invariant 
             // CheckedOperands conterrà tutte le istruzioni identificate come loop-invariant.
             SmallVector<Value *, 8> LoopInvariantInstructions;
             // Itera su tutti i blocchi del ciclo
@@ -390,14 +359,6 @@ struct LoopInvariantPass : PassInfoMixin<LoopInvariantPass> {
                     isLoopInvariant(I, L, LoopInvariantInstructions); // La funzione riempie il vettore 
                 }
             }
-
-            // RIMOZIONE: La riga seguente è stata rimossa. La logica di filtro
-            // è stata spostata nella fase successiva.
-            // for (Value *Checked : CheckedOperands) {
-            //     if (Instruction *CheckedInst = dyn_cast<Instruction>(Checked)) {
-            //         isInBlockDominatingAllExits(*CheckedInst, L, CheckedOperands, DT);
-            //     }
-            // }
 
             if (LoopInvariantInstructions.empty()) { // Usiamo il nuovo nome della variabile
                 errs() << "Nessuna istruzione loop-invariant trovata per questo ciclo. Skipping.\n";
@@ -410,36 +371,21 @@ struct LoopInvariantPass : PassInfoMixin<LoopInvariantPass> {
             }
             errs() << "...\n";
 
-            // --- Fase 2: Filtro dei candidati per il Code Motion ---
+            // Filtro dei candidati per il Code Motion
             // Costruisci l'insieme delle istruzioni finali candidabili al movimento.
             SmallPtrSet<Instruction *, 8> FinalCandidatesForMotion;
             
-            // RIMOZIONE: La variabile 'InvariantSet' e il suo popolamento iniziale sono stati rimossi da qui,
-            //            poiché la logica è stata consolidata in FinalCandidatesForMotion.
-            // SmallPtrSet<Instruction *, 8> InvariantSet; 
-            // for (Value *Checked : CheckedOperands) { // Usa CheckedOperands o LoopInvariantInstructions
-            //     if (Instruction *CheckedInst = dyn_cast<Instruction>(Checked)) {
-            //         if (dominatesAllUsesInLoop(*CheckedInst, L, DT, InvariantSet)) {
-            //             InvariantSet.insert(CheckedInst);
-            //         } else {
-            //             errs() << "Istruzione non aggiunta a InvariantSet: " << *CheckedInst << "\n";
-            //         }
-            //     }
-            // }
 
-            // NUOVO BLOCCO: Itera sulle istruzioni identificate come loop-invariant
-            // e applica le condizioni aggiuntive per lo spostamento.
+            // Itera sulle istruzioni identificate come loop-invariant e applica le condizioni aggiuntive per lo spostamento.
             for (Value *Val : LoopInvariantInstructions) {
                 if (Instruction *I = dyn_cast<Instruction>(Val)) {
-                    // Condizione 1 (già in isLoopInvariant, ma per chiarezza): No effetti collaterali.
-                    // (Già gestito da isLoopInvariant che non le aggiunge se hanno side effects)
                     
                     // Non considerare istruzioni terminator
                     if (I->isTerminator()) {
                         continue;
                     }
 
-                     // NUOVO CONTROLLO: Verifica se è sicuro spostare l'istruzione
+                     //Verifica se è sicuro spostare l'istruzione
                     if (!isSafeToMove(I, L)) {
                         errs() << "Istruzione non candidata (non sicura da spostare): " << *I << "\n";
                         continue;
@@ -447,7 +393,7 @@ struct LoopInvariantPass : PassInfoMixin<LoopInvariantPass> {
                     
 
 
-                    // Condizione 2: Dominanza delle uscite OPPURE liveness esterna (come da slide)
+                    //  Dominanza delle uscite OPPURE liveness esterna
                     bool DominatesExits = dominatesAllLoopExits(*I, L, DT);
                     bool IsDeadOutside = isDead(I, L);
 
@@ -456,8 +402,7 @@ struct LoopInvariantPass : PassInfoMixin<LoopInvariantPass> {
                         continue;
                     }
 
-                    // Condizione 3: L'istruzione deve dominare tutti i suoi usi interni al loop.
-                    // MODIFICATA: La chiamata è stata aggiornata per la nuova firma.
+                    // L'istruzione deve dominare tutti i suoi usi interni al loop.
                     if (!dominatesAllUsesInLoop(*I, L, DT)) {
                         errs() << "Istruzione non candidata (non domina tutti gli usi interni): " << *I << "\n";
                         continue;
@@ -484,8 +429,7 @@ struct LoopInvariantPass : PassInfoMixin<LoopInvariantPass> {
             // Questo per assicurarci di spostare prima le dipendenze (tipo a = ..., b = a + 1)
             SmallPtrSet<Instruction *, 8> Visited;
 
-            // MODIFICATA: dfsCodeMotion ora usa FinalCandidatesForMotion per il parametro InvariantSet,
-            //             assicurando che le dipendenze siano controllate solo tra i candidati validi.
+            // dfsCodeMotion ora usa FinalCandidatesForMotion per il parametro InvariantSet, assicurando che le dipendenze siano controllate solo tra i candidati validi.
             for (Instruction *I : FinalCandidatesForMotion) {
                 dfsCodeMotion(I, L, DT, Preheader, Visited, FinalCandidatesForMotion);
             }            
@@ -493,7 +437,7 @@ struct LoopInvariantPass : PassInfoMixin<LoopInvariantPass> {
         }
         return PreservedAnalyses::all(); // Il pass non invalida nulla in modo specifico
     }
-    // Obbliga LLVM ad eseguire sempre questo pass, anche con -O0
+
     static bool isRequired() { return true; }
 };
 
@@ -503,11 +447,8 @@ struct LoopInvariantPass : PassInfoMixin<LoopInvariantPass> {
 // New PM Registration
 //-----------------------------------------------------------------------------
 
-// Questa funzione restituisce le informazioni principali del plugin.
-// È quella che LLVM usa per capire come caricare il tuo pass. 
 llvm::PassPluginLibraryInfo getLoopInvariantPassPluginInfo() {
     return {LLVM_PLUGIN_API_VERSION, "LoopInvariantPass", LLVM_VERSION_STRING,
-            // Callback che LLVM chiama per registrare il pass nel pipeline manager
             [](PassBuilder &PB) {
                 // Registriamo il nostro pass personalizzato, dandogli un nome che può essere usato da terminale
                 PB.registerPipelineParsingCallback(
