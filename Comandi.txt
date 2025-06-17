@@ -12,7 +12,7 @@ cd ..
 clang++ -S -emit-llvm -O0 \
   -Xclang -disable-O0-optnone \
   -o test/testAlgebraicIdentity.ll \
-  test/testAlgebraicIdentity.cpp
+  test/AlgebraicIdentity.cpp
 
 
 opt -load-pass-plugin ./build/libCombinedOpts.so \
@@ -28,7 +28,7 @@ opt -load-pass-plugin ./build/libCombinedOpts.so \
 clang++ -S -emit-llvm -O0 \
   -Xclang -disable-O0-optnone \
   -o test/testStrenghtReduction.ll \
-  test/testStrenghtReduction.cpp
+  test/StrengthReduction.cpp
 
 
 opt -load-pass-plugin ./build/libCombinedOpts.so  \
@@ -44,7 +44,7 @@ opt -load-pass-plugin ./build/libCombinedOpts.so  \
 clang++ -S -emit-llvm -O0 \
   -Xclang -disable-O0-optnone \
   -o test/testMultiInstruction.ll \
-  test/testMultiInstruction.cpp
+  test/MultiInstruction.cpp
 
 opt -load-pass-plugin ./build/libCombinedOpts.so  \
  -passes="mem2reg,multi-instruction-opt"    \
@@ -83,7 +83,7 @@ make
 cd ..
 
 
-clang -O0 -emit-llvm -Xclang -disable-O0-optnone -S test/TestLoop5.cpp -o test/test_bytecode.bc
+clang -O0 -emit-llvm -Xclang -disable-O0-optnone -S test/Test.cpp -o test/test_bytecode.bc
 
 
 opt -load-pass-plugin build/libLoopFusionPass.so -passes="mem2reg,loop-simplify,loop-rotate,loop-fusion-pass" test/test_bytecode.bc -o test/test_opt.bc
